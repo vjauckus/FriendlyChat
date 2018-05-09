@@ -15,6 +15,7 @@
  */
 package com.google.firebase.udacity.friendlychat;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
@@ -143,36 +144,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        mChildEventListener = new ChildEventListener() {
-            @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                FriendlyMessage friendlyMessage = dataSnapshot.getValue(FriendlyMessage.class);
-
-                mMessageAdapter.add(friendlyMessage);
-            }
-
-            @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {
-
-            }
-
-            @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        };
-
-        mMessagesDatabaseReference.addChildEventListener(mChildEventListener);
+        //here was ChildEventListener at beginning
 
         mAuthStateListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -181,10 +153,11 @@ public class MainActivity extends AppCompatActivity {
 
                 if (firebaseUser != null){
                     //when user is already logged in
-                    Toast.makeText(MainActivity.this, "You are signed in. Welcome!", Toast.LENGTH_SHORT).show();
+                   // Toast.makeText(MainActivity.this, "You are signed in. Welcome!", Toast.LENGTH_SHORT).show();
+                    onSignInInitialize(firebaseUser.getDisplayName());
                 }
                 else {
-
+                    onSignOutCleanup();
                     startActivityForResult(AuthUI.getInstance()
                             .createSignInIntentBuilder()
                             .setIsSmartLockEnabled(false)
@@ -200,6 +173,65 @@ public class MainActivity extends AppCompatActivity {
         };
     }
 
+    private void onSignInInitialize (String userName){
+
+        mUsername = userName;
+        attachDatabaseReadListener();
+
+    }
+    private void attachDatabaseReadListener(){
+
+        if (mChildEventListener == null) {
+
+            mChildEventListener = new ChildEventListener() {
+                @Override
+                public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                    FriendlyMessage friendlyMessage = dataSnapshot.getValue(FriendlyMessage.class);
+
+                    mMessageAdapter.add(friendlyMessage);
+                }
+
+                @Override
+                public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+                }
+
+                @Override
+                public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+                }
+
+                @Override
+                public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+
+                }
+            };
+            mMessagesDatabaseReference.addChildEventListener(mChildEventListener);
+        }
+    }
+
+    private void onSignOutCleanup (){
+
+        mUsername = ANONYMOUS;
+        //without clear is a bug, because we will duplicate messages and unlogged user did not allow to see messages
+        mMessageAdapter.clear();
+        detachDatabaseReadListener();
+    }
+
+    private void detachDatabaseReadListener(){
+
+        if (mChildEventListener != null){
+
+            mMessagesDatabaseReference.removeEventListener(mChildEventListener);
+
+            mChildEventListener = null;
+        }
+    }
     @Override
     protected void onResume() {
         super.onResume();
@@ -209,7 +241,28 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        mFirebaseAuth.removeAuthStateListener(mAuthStateListener);
+        if (mAuthStateListener != null){
+            mFirebaseAuth.removeAuthStateListener(mAuthStateListener);
+        }
+
+        mMessageAdapter.clear();
+        detachDatabaseReadListener();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == RC_SIGN_IN){
+            if (resultCode == RESULT_OK){
+                Toast.makeText(MainActivity.this, "You are signed in. Welcome!", Toast.LENGTH_SHORT).show();
+            }
+            else if(requestCode == RESULT_CANCELED){
+
+                Toast.makeText(MainActivity.this, "You are signed in Cancelled. Try again!", Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        }
     }
 
     @Override
@@ -221,6 +274,15 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        return super.onOptionsItemSelected(item);
+
+        switch (item.getItemId()){
+
+            case R.id.sign_out_menu:
+                AuthUI.getInstance().signOut(this);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+        
     }
 }
