@@ -185,6 +185,8 @@ public class MainActivity extends AppCompatActivity {
                 if (firebaseUser != null){
                     //when user is already logged in
 
+                    Log.v(TAG,"User is logged: "+ mUsername);
+
                    // Toast.makeText(MainActivity.this, "You are signed in. Welcome!", Toast.LENGTH_SHORT).show();
                     onSignInInitialize(firebaseUser.getDisplayName());
                 }
@@ -298,6 +300,7 @@ public class MainActivity extends AppCompatActivity {
             mChildEventListener = new ChildEventListener() {
                 @Override
                 public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+
                     FriendlyMessage friendlyMessage = dataSnapshot.getValue(FriendlyMessage.class);
 
                     mMessageAdapter.add(friendlyMessage);
@@ -305,6 +308,9 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+                    FriendlyMessage friendlyMessage = dataSnapshot.getValue(FriendlyMessage.class);
+                    mMessageAdapter.remove(mMessageAdapter.getItem(mMessageAdapter.getCount() -1));
+                    mMessageAdapter.add(friendlyMessage);
 
                 }
 
@@ -369,6 +375,7 @@ public class MainActivity extends AppCompatActivity {
 
             if (resultCode == RESULT_OK){
                 // Sign-in succeeded, set up the UI
+                Log.v(TAG,"User is logged: "+ mUsername);
                 Toast.makeText(MainActivity.this, "You are signed in. Welcome!", Toast.LENGTH_SHORT).show();
             }
             else if(requestCode == RESULT_CANCELED){
@@ -390,7 +397,7 @@ public class MainActivity extends AppCompatActivity {
                 public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
                     // When the image has successfully uploaded, we get its download URL
                     Uri downloadedUrl = taskSnapshot.getDownloadUrl();
-
+                    Log.v(TAG,"User: "+ mUsername+" sent a new image: ");
                     // Set the download URL to the message box, so that the user can send it to the database
                     FriendlyMessage friendlyMessage = new FriendlyMessage(null, mUsername, downloadedUrl.toString());
 
